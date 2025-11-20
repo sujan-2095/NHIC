@@ -28,6 +28,10 @@ if not secret_key:
     logging.info("Using development secret key. Set FLASK_SECRET_KEY environment variable for production.")
 app.secret_key = secret_key
 
+# Global port configuration
+DEPLOY_PORT = int(os.environ.get('DEPLOY_PORT', 5001))
+APP_PORT = int(os.environ.get('APP_PORT', 5000))
+
 # Initialize database and auth with error handling
 try:
     init_db()
@@ -110,4 +114,4 @@ _alias("download_patients_xlsx", "admin.download_patients_xlsx", "/download_pati
 
 
 if __name__ == "__main__":
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=True, use_reloader=False, port=APP_PORT, host='0.0.0.0')
