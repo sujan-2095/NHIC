@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Registration Successful{% endblock %}
+
+{% block content %}
+<div class="card">
+    <center>
+    <h1>Registration Successful!</h1>
+    
+    <div class="qr-section">
+        <h2>Your QR Code</h2>
+        <div class="qr-display">
+            <img src="data:image/png;base64,{{ qr_code }}" alt="Patient QR Code" style="max-width: 300px; border: 2px solid #007bff; border-radius: 10px;">
+        </div>
+        
+        <div class="qr-instructions">
+        </div>
+    </div>
+    
+    <a href="{{ url_for('download_qr', patient_id=patient_id) }}" class="btn btn-success">Download QR (JPG)</a>
+</center>
+</div>
+
+{% endblock %}

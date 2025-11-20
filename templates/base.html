@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Patient Record System{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    
+    <!-- Notification System -->
+    <script>
+    // Request notification permission on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    });
+
+    // Function to show browser notification
+    function showNotification(title, message, icon = '') {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(title, {
+                body: message,
+                icon: '/static/favicon.ico',
+                badge: '/static/favicon.ico',
+                tag: 'alert-notification',
+                requireInteraction: true
+            });
+        }
+    }
+
+    // Function to check for new alerts (for admin users)
+    function checkForAlerts() {
+        if ('{{ current_user.role if current_user.is_authenticated else "" }}' === 'admin') {
+            fetch('/api/check_alerts')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.new_alerts && data.new_alerts.length > 0) {
+                        data.new_alerts.forEach(alert => {
+                            showNotification(
+                                'Disease Outbreak Alert',
+                                `${alert.disease} outbreak detected in ${alert.district} - ${alert.count} cases this month`
+                            );
+                        });
+                    }
+                })
+                .catch(error => console.error('Error checking alerts:', error));
+        }
+    }
+
+    // Check for alerts every 30 seconds for admin users
+    if ('{{ current_user.role if current_user.is_authenticated else "" }}' === 'admin') {
+        setInterval(checkForAlerts, 30000);
+    }
+    </script>
+    
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Hotzone for hover-to-open on narrow screens -->
+    <div class="sidebar-hotzone" aria-hidden="true"></div>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <span class="brand-icon material-symbols-outlined">vaccines</span>
+                <span class="brand-text">Patient System</span>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('home') }}" class="sidebar-link">
+                    <span class="material-symbols-outlined">home</span>
+                    <span>Home</span>
+                </a>
+                {% if current_user.is_authenticated %}
+                    {% if current_user.role == "admin" %}
+                        <a href="{{ url_for('filtered_patients') }}" class="sidebar-link">
+                            <span class="material-symbols-outlined">filter_list</span>
+                            <span>Registered Patients</span>
+                        </a>
+                        <a href="{{ url_for('filtered_visits') }}" class="sidebar-link">
+                            <span class="material-symbols-outlined">search</span>
+                            <span>View Records</span>
+                        </a>
+                        <a href="{{ url_for('admin_dashboard') }}" class="sidebar-link">
+                            <span class="material-symbols-outlined">monitoring</span>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="{{ url_for('view_alerts') }}" class="sidebar-link">
+                            <span class="material-symbols-outlined">warning</span>
+                            <span>Alerts</span>
+                        </a>
+                        <a href="{{ url_for('system_logs') }}" class="sidebar-link">
+                            <span class="material-symbols-outlined">receipt_long</span>
+                            <span>System Logs</span>
+                        </a>
+                    {% elif current_user.role == "patient" %}
+                        <a href="{{ url_for('past_visits', patient_id=current_user.id) }}" class="sidebar-link">
+                            <span class="material-symbols-outlined">history</span>
+                            <span>Visit History</span>
+                        </a>
+                        <a href="{{ url_for('add_visit', patient_id=current_user.id) }}" class="sidebar-link">
+                            <span class="material-symbols-outlined">add_circle</span>
+                            <span>Add Visit</span>
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <a href="{{ url_for('register') }}" class="sidebar-link">
+                        <span class="material-symbols-outlined">person_add</span>
+                        <span>Register</span>
+                    </a>
+                    <a href="{{ url_for('login') }}" class="sidebar-link">
+                        <span class="material-symbols-outlined">login</span>
+                        <span>Login</span>
+                    </a>
+                {% endif %}
+            </nav>
+        </aside>
+
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="sidebar-toggle" aria-label="Toggle Navigation">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <h1 class="topbar-title">{% block page_title %}{% endblock %}</h1>
+                </div>
+                <div class="topbar-right">
+                    {% if current_user.is_authenticated %}
+                        <span class="user-chip">
+                            <span class="material-symbols-outlined">badge</span>
+                            <span class="user-id">{{ current_user.id }}</span>
+                        </span>
+                        <a href="{{ url_for('logout') }}" class="btn btn-danger btn-ghost">
+                            <span class="material-symbols-outlined">logout</span>
+                            <span>Logout</span>
+                        </a>
+                    {% endif %}
+                </div>
+            </header>
+
+            <main class="content">
+                {% block content %}{% endblock %}
+            </main>
+
+            <footer class="footer">
+                <div class="container footer-inner">
+                    <div class="footer-left">Patient Record System</div>
+                    <div class="footer-right">
+                        <span>Built for secure records and public health insights</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+    {% block scripts %}{% endblock %}
+    <script>
+        // simple sidebar toggle for narrow screens + auto-hide on inactivity
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggle = document.querySelector('.sidebar-toggle');
+            const sidebar = document.querySelector('.sidebar');
+            const hotzone = document.querySelector('.sidebar-hotzone');
+            const mql = window.matchMedia('(max-width: 1024px)');
+            const AUTO_HIDE_MS = 2 * 60 * 1000; // 2 minutes
+            const CLOSE_DELAY = 400; // ms after leaving sidebar/hotzone
+            let inactivityTimer = null;
+            let hoverCloseTimer = null;
+
+            function clearInactivityTimer() {
+                if (inactivityTimer) {
+                    clearTimeout(inactivityTimer);
+                    inactivityTimer = null;
+                }
+            }
+
+            function scheduleAutoHide() {
+                clearInactivityTimer();
+                if (mql.matches && sidebar && sidebar.classList.contains('open')) {
+                    inactivityTimer = setTimeout(() => {
+                        // Auto-hide only on small screens
+                        sidebar.classList.remove('open');
+                    }, AUTO_HIDE_MS);
+                }
+            }
+
+            function resetInactivity() {
+                // Any interaction resets the timer
+                scheduleAutoHide();
+            }
+
+            if (toggle && sidebar) {
+                toggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('open');
+                    scheduleAutoHide();
+                });
+            }
+
+            // Reset timer on common interactions
+            ['mousemove','keydown','touchstart','scroll'].forEach(evt => {
+                window.addEventListener(evt, resetInactivity, { passive: true });
+            });
+
+            // Re-evaluate on viewport size changes
+            mql.addEventListener('change', () => {
+                scheduleAutoHide();
+            });
+
+            // Hover-based reveal on narrow screens
+            function openSidebarByHover() {
+                if (!mql.matches || !sidebar) return;
+                if (!sidebar.classList.contains('open')) {
+                    sidebar.classList.add('open');
+                }
+                scheduleAutoHide();
+            }
+
+            function scheduleHoverClose() {
+                if (!mql.matches) return;
+                if (hoverCloseTimer) clearTimeout(hoverCloseTimer);
+                hoverCloseTimer = setTimeout(() => {
+                    // Close only if pointer is not over sidebar anymore
+                    if (!sidebar.matches(':hover') && !(hotzone && hotzone.matches(':hover'))) {
+                        sidebar.classList.remove('open');
+                    }
+                }, CLOSE_DELAY);
+            }
+
+            if (hotzone) {
+                hotzone.addEventListener('mouseenter', () => {
+                    openSidebarByHover();
+                });
+                hotzone.addEventListener('mouseleave', () => {
+                    scheduleHoverClose();
+                });
+            }
+
+            if (sidebar) {
+                sidebar.addEventListener('mouseenter', () => {
+                    if (hoverCloseTimer) clearTimeout(hoverCloseTimer);
+                });
+                sidebar.addEventListener('mouseleave', () => {
+                    scheduleHoverClose();
+                });
+            }
+
+            // Initial schedule
+            scheduleAutoHide();
+        });
+    </script>
+</body>
+</html>

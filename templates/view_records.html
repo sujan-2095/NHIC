@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}View Records{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>Patient Records</h1>
+    
+    <div class="table-section">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Patient ID</th>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>State</th>
+                    <th>District</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for patient in patients %}
+                <tr>
+                    <td>{{ patient.id }}</td>
+                    <td>{{ patient.name }}</td>
+                    <td>{{ patient.age }}</td>
+                    <td>{{ patient.state }}</td>
+                    <td>{{ patient.district }}</td>
+                    <td>
+                        <a href="{{ url_for('add_visit', patient_id=patient.id) }}" class="btn btn-small">Add Visit</a>
+                        <a href="{{ url_for('download_qr', patient_id=patient.id) }}" class="btn btn-small btn-print">Download QR</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <br>
+    <button onclick="window.print()" class="btn btn-success">Print Records</button>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+        <h2 style="margin:0;">All Patient Visits</h2>
+        <a href="{{ url_for('download_visits_xlsx') }}" class="btn btn-success">Download All Visits (XLSX)</a>
+    </div>
+    <div class="table-section">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Patient ID</th>
+                    <th>Name</th>
+                    <th>Hospital</th>
+                    <th>Doctor</th>
+                    <th>Disease</th>
+                    <th>Documents</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if visits %}
+                    {% for v in visits %}
+                    <tr>
+                        <td>{{ v.timestamp }}</td>
+                        <td>{{ v.patient_id }}</td>
+                        <td>{{ v.patient_name }}</td>
+                        <td>{{ v.hospital }}</td>
+                        <td>{{ v.doctor }}</td>
+                        <td>{{ v.disease }}</td>
+                        <td>
+                            {% if v.has_prescription %}Prescription{% endif %}
+                            {% if v.has_scan %}{% if v.has_prescription %} | {% endif %}Scan{% endif %}
+                        </td>
+                        <td>
+                            {% if v.has_prescription %}
+                                <button type="button" onclick="openDocument('{{ v.visit_id }}', 'prescription')" class="btn btn-small btn-preview">View Prescription</button>
+                            {% endif %}
+                            {% if v.has_scan %}
+                                <button type="button" onclick="openDocument('{{ v.visit_id }}', 'scan')" class="btn btn-small btn-preview">View Scan</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center">No visits recorded.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Document Preview Modal (shared) -->
+<div id="documentModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Document Preview</h3>
+            <div>
+                <a id="downloadLink" href="#" class="btn btn-small btn-secondary" style="margin-right:8px">Download</a>
+                <a id="openInNewTab" href="#" target="_blank" class="btn btn-small btn-ghost" style="margin-right:8px">Open in new tab</a>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+        </div>
+        <div class="modal-body">
+            <iframe id="documentFrame" src="" style="width: 100%; height: 500px; border: none;"></iframe>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openDocument(visitId, docType) {
+    const modal = document.getElementById('documentModal');
+    const frame = document.getElementById('documentFrame');
+    const title = document.getElementById('modalTitle');
+    const openLink = document.getElementById('openInNewTab');
+    const downloadLink = document.getElementById('downloadLink');
+
+    const url = `/view_document/${visitId}/${docType}`;
+    const downloadUrl = `/download_document/${visitId}/${docType}`;
+
+    title.textContent = docType === 'prescription' ? 'Prescription Document' : 'Scan Document';
+    openLink.href = url;
+    downloadLink.href = downloadUrl;
+
+    // Prepare iframe
+    frame.removeAttribute('src');
+    frame.srcdoc = '<div style="padding: 20px; text-align: center;"><h3>Loading document...</h3></div>';
+
+    frame.onload = () => {
+        try { frame.removeAttribute('srcdoc'); } catch (_) {}
+    };
+    frame.onerror = () => {
+        frame.srcdoc = '<div style=\"padding: 20px; text-align: center;\"><h3>Unable to preview</h3><p>If the preview is blocked by the browser, use the \"Open in new tab\" or \"Download\" buttons above.</p></div>';
+    };
+
+    // Load
+    frame.src = url;
+
+    modal.style.display = 'flex';
+}
+
+function closeModal() {
+    const modal = document.getElementById('documentModal');
+    const frame = document.getElementById('documentFrame');
+
+    modal.style.display = 'none';
+    frame.src = '';
+    try { frame.removeAttribute('srcdoc'); } catch (_) {}
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('documentModal');
+    if (event.target === modal) {
+        closeModal();
+    }
+}
+</script>
+{% endblock %}

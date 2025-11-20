@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Disease Outbreak Alerts{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>Outbreak Alerts</h1>
+    <p class="muted" style="margin-top:4px;margin-bottom:12px;font-size:0.95rem;">
+        Counts represent <strong>unique patients</strong> detected in the <strong>last {{ window_days }} days</strong> for a Disease + District.
+    </p>
+
+    <div class="table-section">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Disease</th>
+                    <th>District</th>
+                    <th>Month</th>
+                    <th>Unique Patients</th>
+                    <th>Window</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if alerts %}
+                    {% for alert in alerts %}
+                    <tr>
+                        <td>{{ alert.created_at }}</td>
+                        <td>{{ alert.disease }}</td>
+                        <td>{{ alert.district }}</td>
+                        <td>{{ alert.month }}</td>
+                        <td>{{ alert.count }}</td>
+                        <td>Last {{ window_days }} days</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center">No outbreak alerts recorded.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    
+</div>
+{% endblock %}
+

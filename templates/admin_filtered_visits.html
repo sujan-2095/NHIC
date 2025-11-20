@@ -1,0 +1,511 @@
+{% extends "base.html" %}
+
+{% block title %}Filtered Patient Visits{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
+        <h1 style="margin:0;">Filtered Patient Visits</h1>
+        <div>
+            <a href="{{ url_for('download_visits_xlsx') }}" class="btn btn-success">Download All Visits (XLSX)</a>
+            <a href="{{ url_for('view_records') }}" class="btn btn-secondary">View All Visits</a>
+        </div>
+    </div>
+
+    <!-- Advanced Filter Panel -->
+    <div class="filter-panel" style="background:#f8fafc; border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px;">
+        <h3 style="margin:0 0 16px 0; color:var(--text);">Visit Filters</h3>
+        
+        <form id="filterForm" method="GET" action="{{ url_for('filtered_visits') }}">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:16px;">
+                
+                <!-- Patient ID Filter -->
+                <div class="form-group">
+                    <label for="patient_id">Patient ID</label>
+                    <input type="text" id="patient_id" name="patient_id" placeholder="Enter Patient ID..." 
+                           value="{{ current_filters.patient_id or '' }}" class="filter-input">
+                </div>
+
+                <!-- Patient Name Filter -->
+                <div class="form-group">
+                    <label for="patient_name">Patient Name</label>
+                    <input type="text" id="patient_name" name="patient_name" placeholder="Search by patient name..." 
+                           value="{{ current_filters.patient_name or '' }}" class="filter-input">
+                </div>
+
+                <!-- Age From Filter -->
+                <div class="form-group">
+                    <label for="age_from">Age From</label>
+                    <input type="number" id="age_from" name="age_from" placeholder="Min age" 
+                           value="{{ current_filters.age_from or '' }}" class="filter-input" min="0" max="150">
+                </div>
+
+                <!-- Age To Filter -->
+                <div class="form-group">
+                    <label for="age_to">Age To</label>
+                    <input type="number" id="age_to" name="age_to" placeholder="Max age" 
+                           value="{{ current_filters.age_to or '' }}" class="filter-input" min="0" max="150">
+                </div>
+
+                <!-- State Filter (Fixed to Tamil Nadu) -->
+                <div class="form-group">
+                    <label for="state">State</label>
+                    <select id="state" name="state" class="filter-select">
+                        <option value="Tamil Nadu" {% if current_filters.state == 'Tamil Nadu' %}selected{% endif %}>Tamil Nadu</option>
+                    </select>
+                </div>
+
+                <!-- District Filter -->
+                <div class="form-group">
+                    <label for="district">District</label>
+                    <select id="district" name="district" class="filter-select">
+                        <option value="">All Districts</option>
+                    </select>
+                </div>
+
+                <!-- Disease Filter -->
+                <div class="form-group">
+                    <label for="disease">Disease</label>
+                    <div class="autocomplete-container">
+                        <input type="text" id="disease" name="disease" class="filter-input" 
+                               placeholder="Type to search diseases..." 
+                               value="{{ current_filters.disease or '' }}"
+                               autocomplete="off">
+                        <div id="disease-suggestions" class="suggestions-dropdown"></div>
+                    </div>
+                </div>
+
+                <!-- Location Filter -->
+                <div class="form-group">
+                    <label for="location">Location</label>
+                    <input type="text" id="location" name="location" placeholder="Search by location..." 
+                           value="{{ current_filters.location or '' }}" class="filter-input">
+                </div>
+            </div>
+
+            <!-- Filter Actions -->
+            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-symbols-outlined">search</span>
+                    Apply Filters
+                </button>
+                <a href="{{ url_for('filtered_visits') }}" class="btn btn-ghost">
+                    <span class="material-symbols-outlined">clear</span>
+                    Clear All
+                </a>
+                <button type="button" id="exportFiltered" class="btn btn-success">
+                    <span class="material-symbols-outlined">download</span>
+                    Export Filtered Results
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results Summary -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding:12px; background:var(--primary-50); border-radius:8px;">
+        <div>
+            <strong>{{ visits|length }}</strong> visit(s) found
+            {% if current_filters.disease or current_filters.district or current_filters.hospital or current_filters.doctor or current_filters.date_from or current_filters.date_to or current_filters.patient_id or current_filters.state or current_filters.location or current_filters.has_prescription is not none or current_filters.has_scan is not none %}
+                <span style="color:var(--muted);">(filtered)</span>
+            {% endif %}
+        </div>
+        <div id="activeFilters" style="display:flex; gap:8px; flex-wrap:wrap;">
+            <!-- Active filters will be displayed here by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Results Table -->
+    <div class="table-section">
+        <table class="table" id="visitsTable">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Patient ID</th>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>State</th>
+                    <th>District</th>
+                    <th>Hospital</th>
+                    <th>Doctor</th>
+                    <th>Disease</th>
+                    <th>Location</th>
+                    <th>Documents</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if visits %}
+                    {% for v in visits %}
+                    <tr>
+                        <td>{{ v.timestamp }}</td>
+                        <td>{{ v.patient_id }}</td>
+                        <td>{{ v.patient_name }}</td>
+                        <td>{{ v.patient_age or 'N/A' }}</td>
+                        <td>{{ v.state }}</td>
+                        <td>{{ v.district }}</td>
+                        <td>{{ v.hospital }}</td>
+                        <td>{{ v.doctor }}</td>
+                        <td>{{ v.disease }}</td>
+                        <td>{{ v.location or 'N/A' }}</td>
+                        <td>
+                            {% if v.has_prescription %}Prescription{% endif %}
+                            {% if v.has_scan %}{% if v.has_prescription %} | {% endif %}Scan{% endif %}
+                        </td>
+                        <td>
+                            {% if v.has_prescription %}
+                                <button type="button" onclick="openDocument('{{ v.visit_id }}', 'prescription')" class="btn btn-small btn-preview">View Prescription</button>
+                            {% endif %}
+                            {% if v.has_scan %}
+                                <button type="button" onclick="openDocument('{{ v.visit_id }}', 'scan')" class="btn btn-small btn-preview">View Scan</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="12" class="text-center">No visits found matching the selected criteria.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Document Preview Modal (shared) -->
+<div id="documentModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Document Preview</h3>
+            <div>
+                <a id="downloadLink" href="#" class="btn btn-small btn-secondary" style="margin-right:8px">Download</a>
+                <a id="openInNewTab" href="#" target="_blank" class="btn btn-small btn-ghost" style="margin-right:8px">Open in new tab</a>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+        </div>
+        <div class="modal-body">
+            <iframe id="documentFrame" src="" style="width: 100%; height: 500px; border: none;"></iframe>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Document preview functions
+function openDocument(visitId, docType) {
+    const modal = document.getElementById('documentModal');
+    const frame = document.getElementById('documentFrame');
+    const title = document.getElementById('modalTitle');
+    const openLink = document.getElementById('openInNewTab');
+    const downloadLink = document.getElementById('downloadLink');
+
+    const url = `/view_document/${visitId}/${docType}`;
+    const downloadUrl = `/download_document/${visitId}/${docType}`;
+
+    title.textContent = docType === 'prescription' ? 'Prescription Document' : 'Scan Document';
+    openLink.href = url;
+    downloadLink.href = downloadUrl;
+
+    // Prepare iframe
+    frame.removeAttribute('src');
+    frame.srcdoc = '<div style="padding: 20px; text-align: center;"><h3>Loading document...</h3></div>';
+
+    frame.onload = () => {
+        try { frame.removeAttribute('srcdoc'); } catch (_) {}
+    };
+    frame.onerror = () => {
+        frame.srcdoc = '<div style="padding: 20px; text-align: center;"><h3>Unable to preview</h3><p>If the preview is blocked by the browser, use the "Open in new tab" or "Download" buttons above.</p></div>';
+    };
+
+    // Load
+    frame.src = url;
+    modal.style.display = 'flex';
+}
+
+function closeModal() {
+    const modal = document.getElementById('documentModal');
+    const frame = document.getElementById('documentFrame');
+    modal.style.display = 'none';
+    frame.src = '';
+    try { frame.removeAttribute('srcdoc'); } catch (_) {}
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('documentModal');
+    if (event.target === modal) {
+        closeModal();
+    }
+}
+
+// Filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Display active filters
+    displayActiveFilters();
+    
+    // Auto-submit form on select changes
+    const selectElements = document.querySelectorAll('.filter-select');
+    selectElements.forEach(select => {
+        select.addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+    });
+    
+    // Export filtered results
+    document.getElementById('exportFiltered').addEventListener('click', function() {
+        const form = document.getElementById('filterForm');
+        const formData = new FormData(form);
+        const params = new URLSearchParams(formData);
+        window.open(`/download_visits_xlsx?${params.toString()}`, '_blank');
+    });
+});
+
+function displayActiveFilters() {
+    const activeFiltersDiv = document.getElementById('activeFilters');
+    const filters = {{ current_filters|tojson }};
+    
+    Object.keys(filters).forEach(key => {
+        const value = filters[key];
+        if (value !== null && value !== '' && value !== undefined) {
+            const filterChip = document.createElement('span');
+            filterChip.className = 'filter-chip';
+            filterChip.style.cssText = 'background:var(--primary); color:white; padding:4px 8px; border-radius:12px; font-size:12px; display:inline-flex; align-items:center; gap:4px;';
+            
+            const label = key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+            filterChip.innerHTML = `${label}: ${value} <span onclick="removeFilter('${key}')" style="cursor:pointer; margin-left:4px;">&times;</span>`;
+            activeFiltersDiv.appendChild(filterChip);
+        }
+    });
+}
+
+function removeFilter(filterKey) {
+    const form = document.getElementById('filterForm');
+    const input = form.querySelector(`[name="${filterKey}"]`);
+    if (input) {
+        input.value = '';
+        form.submit();
+    }
+}
+
+// Load Tamil Nadu districts and setup disease autocomplete on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const districtSelect = document.getElementById('district');
+    const diseaseInput = document.getElementById('disease');
+    const diseaseSuggestions = document.getElementById('disease-suggestions');
+    
+    // Tamil Nadu districts from the stateDistricts object
+    const tamilNaduDistricts = [
+        "Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", 
+        "Dharmapuri", "Dindigul", "Erode", "Kallakurichi", "Kanchipuram", 
+        "Kanyakumari", "Karur", "Krishnagiri", "Madurai", "Nagapattinam", 
+        "Namakkal", "Nilgiris", "Perambalur", "Pudukkottai", "Ramanathapuram", 
+        "Ranipet", "Salem", "Sivaganga", "Tenkasi", "Thanjavur", "Theni", 
+        "Thoothukudi", "Tiruchirappalli", "Tirunelveli", "Tirupathur", 
+        "Tiruppur", "Tiruvallur", "Tiruvannamalai", "Tiruvarur", "Vellore", 
+        "Viluppuram", "Virudhunagar"
+    ];
+    
+    // Populate district dropdown
+    districtSelect.innerHTML = '<option value="">All Districts</option>';
+    tamilNaduDistricts.forEach(district => {
+        const option = document.createElement('option');
+        option.value = district;
+        option.textContent = district;
+        districtSelect.appendChild(option);
+    });
+    
+    // Set current filter value if exists
+    const currentDistrict = '{{ current_filters.district or "" }}';
+    if (currentDistrict) {
+        districtSelect.value = currentDistrict;
+    }
+    
+    // Disease autocomplete functionality
+    let selectedDiseaseIndex = -1;
+    
+    function filterDiseases(query) {
+        if (!query || query.length < 1) {
+            return [];
+        }
+        return diseaseList.filter(disease => 
+            disease.toLowerCase().includes(query.toLowerCase())
+        ).slice(0, 10); // Limit to 10 suggestions
+    }
+    
+    function showSuggestions(suggestions) {
+        diseaseSuggestions.innerHTML = '';
+        if (suggestions.length === 0) {
+            diseaseSuggestions.style.display = 'none';
+            return;
+        }
+        
+        suggestions.forEach((disease, index) => {
+            const div = document.createElement('div');
+            div.className = 'suggestion-item';
+            div.textContent = disease;
+            div.addEventListener('click', () => {
+                diseaseInput.value = disease;
+                diseaseSuggestions.style.display = 'none';
+                selectedDiseaseIndex = -1;
+                // Auto-submit form when disease is selected
+                document.getElementById('filterForm').submit();
+            });
+            diseaseSuggestions.appendChild(div);
+        });
+        
+        diseaseSuggestions.style.display = 'block';
+    }
+    
+    function hideSuggestions() {
+        setTimeout(() => {
+            diseaseSuggestions.style.display = 'none';
+            selectedDiseaseIndex = -1;
+        }, 200);
+    }
+    
+    // Event listeners for disease input
+    diseaseInput.addEventListener('input', function() {
+        const query = this.value;
+        const suggestions = filterDiseases(query);
+        showSuggestions(suggestions);
+        selectedDiseaseIndex = -1;
+    });
+    
+    diseaseInput.addEventListener('keydown', function(e) {
+        const suggestions = diseaseSuggestions.querySelectorAll('.suggestion-item');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedDiseaseIndex = Math.min(selectedDiseaseIndex + 1, suggestions.length - 1);
+            updateSelection();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedDiseaseIndex = Math.max(selectedDiseaseIndex - 1, -1);
+            updateSelection();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selectedDiseaseIndex >= 0 && suggestions[selectedDiseaseIndex]) {
+                this.value = suggestions[selectedDiseaseIndex].textContent;
+                diseaseSuggestions.style.display = 'none';
+                selectedDiseaseIndex = -1;
+                // Auto-submit form when disease is selected
+                document.getElementById('filterForm').submit();
+            }
+        } else if (e.key === 'Escape') {
+            hideSuggestions();
+        }
+    });
+    
+    function updateSelection() {
+        const suggestions = diseaseSuggestions.querySelectorAll('.suggestion-item');
+        suggestions.forEach((item, index) => {
+            item.classList.toggle('selected', index === selectedDiseaseIndex);
+        });
+    }
+    
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!diseaseInput.contains(e.target) && !diseaseSuggestions.contains(e.target)) {
+            hideSuggestions();
+        }
+    });
+    
+    // Focus event
+    diseaseInput.addEventListener('focus', function() {
+        const query = this.value;
+        if (query) {
+            const suggestions = filterDiseases(query);
+            showSuggestions(suggestions);
+        }
+    });
+});
+</script>
+
+<style>
+.filter-panel {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.filter-select, .filter-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    font-size: 14px;
+}
+
+.filter-select:focus, .filter-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.autocomplete-container {
+    position: relative;
+    width: 100%;
+}
+
+.suggestions-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.suggestion-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.suggestion-item:hover,
+.suggestion-item.selected {
+    background-color: #f8f9fa;
+    color: #007bff;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.filter-chip {
+    transition: all 0.2s ease;
+}
+
+.filter-chip:hover {
+    background: var(--primary-600) !important;
+}
+
+.table-section {
+    overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+    .filter-panel > div:first-child {
+        grid-template-columns: 1fr;
+    }
+    
+    .filter-panel > div:last-child {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-panel > div:last-child .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}

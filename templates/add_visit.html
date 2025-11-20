@@ -1,0 +1,418 @@
+{% extends "base.html" %}
+
+{% block title %}Add Visit - {{ patient.name }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1> Add New Visit</h1>
+    
+    {% if success %}
+    <div class="success-popup" id="successPopup" >
+        <div class="popup-content"style="background-color: rgba(40, 161, 40, 0.911);">
+            <span class="popup-close" onclick="closePopup()">&times;</span>
+            <span class="popup-icon">✅</span>
+            <h3 style="color: #fff;">Visit Added Successfully!</h3>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Alert toast (fallback when native notifications are unavailable) -->
+    <div id="alertToast" class="toast" style="display:none;">
+        <div class="toast-body">
+            <strong>Alert</strong>
+            <span id="toastMessage"></span>
+            <button class="toast-close" onclick="hideToast()">&times;</button>
+        </div>
+    </div>
+    
+    <form method="POST" enctype="multipart/form-data" id="visitForm">
+        <div class="form-group">
+            <label for="hospital">Hospital:</label>
+            <input type="text" id="hospital" name="hospital" required placeholder="Enter hospital name">
+        </div>
+        
+        <div class="form-group">
+            <label for="doctor">Doctor:</label>
+            <input type="text" id="doctor" name="doctor" required placeholder="Enter doctor's name">
+        </div>
+        
+        <div class="form-group">
+            <label for="disease">Disease/Condition:</label>
+            <select id="disease" name="disease" required>
+                <option value="" disabled selected>Select disease/condition</option>
+                {% for d in disease_options %}
+                <option value="{{ d }}">{{ d }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" id="disease_other" name="disease_other" placeholder="Please specify disease" style="display:none; margin-top:8px;" />
+        </div>
+        
+        <div class="form-group">
+            <label for="prescription">Prescription (Optional):</label>
+            <input type="file" id="prescription" name="prescription" accept=".pdf,.jpg,.jpeg,.png">
+        </div>
+        
+        <div class="form-group">
+            <label for="scan_doc">Scan Document (Optional):</label>
+            <input type="file" id="scan_doc" name="scan_doc" accept=".pdf,.jpg,.jpeg,.png">
+        </div>
+        
+        <div class="form-group">
+            <label for="location">Location:</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="text" id="location" name="location" placeholder="Click 'Get Current Location' to auto-fill" readonly style="flex: 1;">
+                <button type="button" id="getLocationBtn" class="btn btn-secondary" style="white-space: nowrap;">
+                    <span class="material-symbols-outlined">my_location</span>
+                    Get Current Location
+                </button>
+            </div>
+            <small style="color: #666; margin-top: 4px; display: block;">
+                Location will be automatically detected with district information and used for visit filtering
+            </small>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">💾 Save Visit</button>
+        
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function closePopup() {
+    var popup = document.getElementById('successPopup');
+    if (popup) {
+        popup.style.opacity = '0';
+        setTimeout(function() { popup.style.display = 'none'; }, 300);
+    }
+}
+
+function showToast(message) {
+    const toast = document.getElementById('alertToast');
+    const msg = document.getElementById('toastMessage');
+    if (!toast || !msg) return;
+    msg.textContent = ' ' + (message || 'New alert generated');
+    toast.style.display = 'block';
+    // trigger fade-in via CSS class toggle
+    toast.classList.remove('hide');
+    toast.classList.add('show');
+    // auto-hide after 6s
+    setTimeout(hideToast, 6000);
+}
+
+function hideToast() {
+    const toast = document.getElementById('alertToast');
+    if (!toast) return;
+    toast.classList.remove('show');
+    toast.classList.add('hide');
+    setTimeout(() => { toast.style.display = 'none'; }, 300);
+}
+
+function testNotifications() {
+    console.log('Testing notification system...');
+    const testMessage = 'This is a test notification to verify the system is working';
+    
+    // Test toast notification
+    showToast(testMessage);
+    
+    // Test browser notification
+    if ('Notification' in window) {
+        console.log('Browser notifications supported. Current permission:', Notification.permission);
+        
+        if (Notification.permission === 'granted') {
+            console.log('Permission granted, showing test notification');
+            try {
+                const n = new Notification('🧪 Test Notification', {
+                    body: testMessage,
+                    icon: '/static/favicon.ico',
+                    requireInteraction: false,
+                    tag: 'test-notification'
+                });
+                n.onclick = function() { 
+                    window.focus && window.focus(); 
+                    this.close && this.close(); 
+                };
+                console.log('Test browser notification created successfully');
+            } catch(e) {
+                console.error('Error creating test notification:', e);
+            }
+        } else if (Notification.permission === 'default') {
+            console.log('Requesting notification permission...');
+            Notification.requestPermission().then(function(permission) {
+                console.log('Permission response:', permission);
+                if (permission === 'granted') {
+                    try {
+                        const n = new Notification('🧪 Test Notification', {
+                            body: testMessage,
+                            icon: '/static/favicon.ico',
+                            requireInteraction: false,
+                            tag: 'test-notification'
+                        });
+                        n.onclick = function() { 
+                            window.focus && window.focus(); 
+                            this.close && this.close(); 
+                        };
+                        console.log('Test browser notification created after permission grant');
+                    } catch(e) {
+                        console.error('Error creating test notification after permission:', e);
+                    }
+                } else {
+                    console.log('Permission denied or dismissed');
+                    alert('Browser notifications are disabled. You will only see toast notifications.');
+                }
+            }).catch(function(error) {
+                console.error('Error requesting notification permission:', error);
+            });
+        } else {
+            console.log('Notifications denied by user');
+            alert('Browser notifications are blocked. You will only see toast notifications.');
+        }
+    } else {
+        console.log('Browser notifications not supported');
+        alert('Browser notifications are not supported. You will only see toast notifications.');
+    }
+}
+
+// Toggle custom disease field when 'Other' is selected
+document.addEventListener('DOMContentLoaded', function () {
+    const sel = document.getElementById('disease');
+    const other = document.getElementById('disease_other');
+    if (!sel || !other) return;
+    function toggleOther() {
+        if (sel.value === 'Other') {
+            other.style.display = 'block';
+            other.required = true;
+            other.focus();
+        } else {
+            other.style.display = 'none';
+            other.required = false;
+            other.value = '';
+        }
+    }
+    sel.addEventListener('change', toggleOther);
+    toggleOther();
+    
+    // Live location functionality
+    const locationInput = document.getElementById('location');
+    const getLocationBtn = document.getElementById('getLocationBtn');
+    
+    if (getLocationBtn && locationInput) {
+        getLocationBtn.addEventListener('click', function() {
+            if (!navigator.geolocation) {
+                alert('Geolocation is not supported by this browser.');
+                return;
+            }
+            
+            getLocationBtn.disabled = true;
+            getLocationBtn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Getting Location...';
+            
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    // Use reverse geocoding to get address
+                    reverseGeocode(lat, lng, function(address) {
+                        locationInput.value = address;
+                        locationInput.style.borderColor = '#28a745';
+                        getLocationBtn.innerHTML = '<span class="material-symbols-outlined">check_circle</span> Location Found';
+                        getLocationBtn.style.backgroundColor = '#28a745';
+                        getLocationBtn.disabled = false;
+                    });
+                },
+                function(error) {
+                    let errorMessage = 'Unable to retrieve your location. ';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage += 'Please allow location access and try again.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage += 'Location information is unavailable.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage += 'Location request timed out.';
+                            break;
+                        default:
+                            errorMessage += 'An unknown error occurred.';
+                            break;
+                    }
+                    alert(errorMessage);
+                    getLocationBtn.innerHTML = '<span class="material-symbols-outlined">my_location</span> Get Current Location';
+                    getLocationBtn.disabled = false;
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000 // 5 minutes
+                }
+            );
+        });
+    }
+    
+    // Reverse geocoding function using OpenStreetMap Nominatim API
+    function reverseGeocode(lat, lng, callback) {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&zoom=18&extratags=1`;
+        
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.display_name) {
+                    // Format the address nicely
+                    let address = data.display_name;
+                    
+                    // Try to extract a more readable format with district priority
+                    if (data.address) {
+                        const parts = [];
+                        if (data.address.house_number) parts.push(data.address.house_number);
+                        if (data.address.road) parts.push(data.address.road);
+                        if (data.address.suburb) parts.push(data.address.suburb);
+                        if (data.address.city || data.address.town) parts.push(data.address.city || data.address.town);
+                        
+                        // Prioritize district information - try multiple district fields
+                        if (data.address.county || data.address.district || data.address.municipality) {
+                            parts.push(data.address.county || data.address.district || data.address.municipality);
+                        }
+                        
+                        if (data.address.state) parts.push(data.address.state);
+                        if (data.address.country) parts.push(data.address.country);
+                        
+                        if (parts.length > 0) {
+                            address = parts.join(', ');
+                        }
+                    }
+                    
+                    // Fallback: if no district found in structured address, try to extract from display_name
+                    if (data.display_name && (!data.address || !data.address.county && !data.address.district && !data.address.municipality)) {
+                        // Look for district-like patterns in the display_name
+                        const displayParts = data.display_name.split(', ');
+                        const districtKeywords = ['district', 'county', 'municipality', 'tehsil', 'taluka'];
+                        
+                        for (let i = 0; i < displayParts.length; i++) {
+                            const part = displayParts[i].toLowerCase();
+                            if (districtKeywords.some(keyword => part.includes(keyword))) {
+                                // Found a district-like term, use the part before it as district
+                                if (i > 0) {
+                                    const districtPart = displayParts[i - 1];
+                                    if (districtPart && !address.includes(districtPart)) {
+                                        address = address.replace(/([^,]+), ([^,]+), ([^,]+)$/, `$1, $2, ${districtPart}, $3`);
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    
+                    callback(address);
+                } else {
+                    callback(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+                }
+            })
+            .catch(error => {
+                console.error('Reverse geocoding error:', error);
+                callback(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+            });
+    }
+});
+</script>
+
+{% if success %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var popup = document.getElementById('successPopup');
+    if (popup) {
+        popup.style.display = 'flex';
+        setTimeout(function() {
+            popup.style.opacity = '0';
+            setTimeout(function() { popup.style.display = 'none'; }, 300);
+        }, 3000);
+        var form = document.getElementById('visitForm');
+        if (form) { form.reset(); }
+    }
+});
+</script>
+
+{% if alert_generated %}
+<!-- Hidden data element to carry alert message without embedding Jinja inside JS -->
+<span id="alertData" data-body="{{ (alert_message or 'New alert generated')|e }}" style="display:none"></span>
+<script>
+(function notifyAlert(){
+    const title = '🚨 Health Alert';
+    const dataEl = document.getElementById('alertData');
+    const body = (dataEl && dataEl.getAttribute('data-body')) || 'New alert generated';
+    
+    console.log('Alert notification triggered:', body);
+    
+    // Always show toast notification as primary method
+    showToast(body);
+    
+    // Try browser notification as secondary method
+    if ('Notification' in window) {
+        console.log('Browser notifications supported. Current permission:', Notification.permission);
+        
+        // If site not in secure context (http), only use toast
+        if (!window.isSecureContext) { 
+            console.log('Not in secure context, using toast only');
+            return; 
+        }
+        
+        // If permission already granted, show notification
+        if (Notification.permission === 'granted') {
+            console.log('Permission granted, showing notification');
+            try {
+                const n = new Notification(title, {
+                    body: body,
+                    icon: '/static/favicon.ico',
+                    requireInteraction: true,
+                    tag: 'outbreak-alert'
+                });
+                n.onclick = function() { 
+                    window.focus && window.focus(); 
+                    this.close && this.close(); 
+                };
+                console.log('Browser notification created successfully');
+            } catch(e) {
+                console.error('Error creating notification:', e);
+            }
+        } else if (Notification.permission === 'default') {
+            console.log('Permission not set, requesting permission');
+            // Request permission (modern Promise-based approach)
+            Notification.requestPermission().then(function(permission) {
+                console.log('Permission response:', permission);
+                if (permission === 'granted') {
+                    try {
+                        const n = new Notification(title, {
+                            body: body,
+                            icon: '/static/favicon.ico',
+                            requireInteraction: true,
+                            tag: 'outbreak-alert'
+                        });
+                        n.onclick = function() { 
+                            window.focus && window.focus(); 
+                            this.close && this.close(); 
+                        };
+                        console.log('Browser notification created after permission grant');
+                    } catch(e) {
+                        console.error('Error creating notification after permission:', e);
+                    }
+                } else {
+                    console.log('Permission denied or dismissed');
+                }
+            }).catch(function(error) {
+                console.error('Error requesting notification permission:', error);
+            });
+        } else {
+            console.log('Notifications denied by user');
+        }
+    } else {
+        console.log('Browser notifications not supported');
+    }
+})();
+</script>
+{% endif %}
+{% endif %}
+{% endblock %}

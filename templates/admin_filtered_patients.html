@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Filtered Patients{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
+        <h1 style="margin:0;">Filtered Patients</h1>
+        <div>
+            <a href="{{ url_for('download_patients_xlsx') }}" class="btn btn-success">Download All Patients (XLSX)</a>
+            <a href="{{ url_for('registered_patients') }}" class="btn btn-secondary">View All Patients</a>
+        </div>
+    </div>
+
+    <!-- Advanced Filter Panel -->
+    <div class="filter-panel" style="background:#f8fafc; border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px;">
+        <h3 style="margin:0 0 16px 0; color:var(--text);">Patient Filters</h3>
+        
+        <form id="filterForm" method="GET" action="{{ url_for('filtered_patients') }}">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:16px;">
+                
+                <!-- Patient ID Filter -->
+                <div class="form-group">
+                    <label for="patient_id">Patient ID</label>
+                    <input type="text" id="patient_id" name="patient_id" placeholder="Enter Patient ID..." 
+                           value="{{ current_filters.patient_id or '' }}" class="filter-input">
+                </div>
+
+                <!-- Name Filter -->
+                <div class="form-group">
+                    <label for="name">Patient Name</label>
+                    <input type="text" id="name" name="name" placeholder="Search by patient name..." 
+                           value="{{ current_filters.name or '' }}" class="filter-input">
+                </div>
+
+                <!-- Age From Filter -->
+                <div class="form-group">
+                    <label for="age_from">Age From</label>
+                    <input type="number" id="age_from" name="age_from" placeholder="Min age" 
+                           value="{{ current_filters.age_from or '' }}" class="filter-input" min="0" max="150">
+                </div>
+
+                <!-- Age To Filter -->
+                <div class="form-group">
+                    <label for="age_to">Age To</label>
+                    <input type="number" id="age_to" name="age_to" placeholder="Max age" 
+                           value="{{ current_filters.age_to or '' }}" class="filter-input" min="0" max="150">
+                </div>
+
+                <!-- State Filter (Fixed to Tamil Nadu) -->
+                <div class="form-group">
+                    <label for="state">State</label>
+                    <select id="state" name="state" class="filter-select">
+                        <option value="Tamil Nadu" {% if current_filters.state == 'Tamil Nadu' %}selected{% endif %}>Tamil Nadu</option>
+                    </select>
+                </div>
+
+                <!-- District Filter -->
+                <div class="form-group">
+                    <label for="district">District</label>
+                    <select id="district" name="district" class="filter-select">
+                        <option value="">All Districts</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <!-- Filter Actions -->
+            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-symbols-outlined">search</span>
+                    Apply Filters
+                </button>
+                <a href="{{ url_for('filtered_patients') }}" class="btn btn-ghost">
+                    <span class="material-symbols-outlined">clear</span>
+                    Clear All
+                </a>
+                <button type="button" id="exportFiltered" class="btn btn-success">
+                    <span class="material-symbols-outlined">download</span>
+                    Export Filtered Results
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results Summary -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding:12px; background:var(--primary-50); border-radius:8px;">
+        <div>
+            <strong>{{ patients|length }}</strong> patient(s) found
+            {% if current_filters.state or current_filters.district or current_filters.name or current_filters.age_from or current_filters.age_to %}
+                <span style="color:var(--muted);">(filtered)</span>
+            {% endif %}
+        </div>
+        <div id="activeFilters" style="display:flex; gap:8px; flex-wrap:wrap;">
+            <!-- Active filters will be displayed here by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Results Table -->
+    <div class="table-section">
+        <table class="table" id="patientsTable">
+            <thead>
+                <tr>
+                    <th>Patient ID</th>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>State</th>
+                    <th>District</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if patients %}
+                    {% for patient in patients %}
+                    <tr>
+                        <td>{{ patient.id }}</td>
+                        <td>{{ patient.name }}</td>
+                        <td>{{ patient.age }}</td>
+                        <td>{{ patient.state }}</td>
+                        <td>{{ patient.district }}</td>
+                        <td>
+                            <a href="{{ url_for('past_visits', patient_id=patient.id) }}" class="btn btn-small">View History</a>
+                            <a href="{{ url_for('add_visit', patient_id=patient.id) }}" class="btn btn-small">Add Visit</a>
+                            <a href="{{ url_for('download_qr', patient_id=patient.id) }}" class="btn btn-small btn-print">Download QR</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center">No patients found matching the selected criteria.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Display active filters
+    displayActiveFilters();
+    
+    // Auto-submit form on select changes
+    const selectElements = document.querySelectorAll('.filter-select');
+    selectElements.forEach(select => {
+        select.addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+    });
+    
+    // Export filtered results
+    document.getElementById('exportFiltered').addEventListener('click', function() {
+        const form = document.getElementById('filterForm');
+        const formData = new FormData(form);
+        const params = new URLSearchParams(formData);
+        window.open(`/download_patients_xlsx?${params.toString()}`, '_blank');
+    });
+});
+
+function displayActiveFilters() {
+    const activeFiltersDiv = document.getElementById('activeFilters');
+    const filters = {{ current_filters|tojson }};
+    
+    Object.keys(filters).forEach(key => {
+        const value = filters[key];
+        if (value !== null && value !== '' && value !== undefined) {
+            const filterChip = document.createElement('span');
+            filterChip.className = 'filter-chip';
+            filterChip.style.cssText = 'background:var(--primary); color:white; padding:4px 8px; border-radius:12px; font-size:12px; display:inline-flex; align-items:center; gap:4px;';
+            
+            const label = key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+            filterChip.innerHTML = `${label}: ${value} <span onclick="removeFilter('${key}')" style="cursor:pointer; margin-left:4px;">&times;</span>`;
+            activeFiltersDiv.appendChild(filterChip);
+        }
+    });
+}
+
+function removeFilter(filterKey) {
+    const form = document.getElementById('filterForm');
+    const input = form.querySelector(`[name="${filterKey}"]`);
+    if (input) {
+        input.value = '';
+        form.submit();
+    }
+}
+
+// Load Tamil Nadu districts on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const districtSelect = document.getElementById('district');
+    
+    // Tamil Nadu districts from the stateDistricts object
+    const tamilNaduDistricts = [
+        "Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", 
+        "Dharmapuri", "Dindigul", "Erode", "Kallakurichi", "Kanchipuram", 
+        "Kanyakumari", "Karur", "Krishnagiri", "Madurai", "Nagapattinam", 
+        "Namakkal", "Nilgiris", "Perambalur", "Pudukkottai", "Ramanathapuram", 
+        "Ranipet", "Salem", "Sivaganga", "Tenkasi", "Thanjavur", "Theni", 
+        "Thoothukudi", "Tiruchirappalli", "Tirunelveli", "Tirupathur", 
+        "Tiruppur", "Tiruvallur", "Tiruvannamalai", "Tiruvarur", "Vellore", 
+        "Viluppuram", "Virudhunagar"
+    ];
+    
+    // Populate district dropdown
+    districtSelect.innerHTML = '<option value="">All Districts</option>';
+    tamilNaduDistricts.forEach(district => {
+        const option = document.createElement('option');
+        option.value = district;
+        option.textContent = district;
+        districtSelect.appendChild(option);
+    });
+    
+    // Set current filter value if exists
+    const currentDistrict = '{{ current_filters.district or "" }}';
+    if (currentDistrict) {
+        districtSelect.value = currentDistrict;
+    }
+});
+</script>
+
+<style>
+.filter-panel {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.filter-select, .filter-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    font-size: 14px;
+}
+
+.filter-select:focus, .filter-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.autocomplete-container {
+    position: relative;
+    width: 100%;
+}
+
+.suggestions-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.suggestion-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.suggestion-item:hover,
+.suggestion-item.selected {
+    background-color: #f8f9fa;
+    color: #007bff;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.filter-chip {
+    transition: all 0.2s ease;
+}
+
+.filter-chip:hover {
+    background: var(--primary-600) !important;
+}
+
+.table-section {
+    overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+    .filter-panel > div:first-child {
+        grid-template-columns: 1fr;
+    }
+    
+    .filter-panel > div:last-child {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-panel > div:last-child .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}

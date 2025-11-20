@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Patient Record System{% endblock %}
+
+{% block head %}
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+{% endblock %}
+
+{% block content %}
+<div class="login-card">
+    <center><h1>Login</h1></center>
+    
+    {% if error %}
+    <div class="error-message">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    {% if patient_id %}
+    <div class="success-message">
+        Patient found! Please enter your password to continue.
+    </div>
+    {% endif %}
+
+    <!-- QR Scanner Option -->
+    <div class="qr-login-section">
+        <div class="qr-header">
+            <div>
+                <h3 class="qr-title">Quick Login with QR Code</h3>
+                <p class="qr-subtitle">Scan your patient QR to auto-fill your Patient ID.</p>
+            </div>
+            <div class="qr-actions">
+                <button type="button" id="scan-qr-btn" class="btn btn-secondary">Scan QR to Auto-Fill ID</button>
+                <button type="button" id="stop-scan-btn" class="btn btn-danger" style="display: none;">Stop Scanner</button>
+            </div>
+        </div>
+
+        <div class="qr-card">
+            <div class="qr-frame">
+                <div id="login-qr-reader" style="display: none; width: 100%; max-width: 400px; margin: 0 auto;"></div>
+            </div>
+            <div id="scanner-message" class="qr-message" aria-live="polite"></div>
+            <div class="qr-tip">Allow camera permission when prompted. If the preview does not appear, try another browser or device.</div>
+        </div>
+    </div>
+<br>
+
+    <form method="POST" class="login-form">
+        {% if patient_id %}
+            <input type="hidden" name="user_id" value="{{ patient_id }}">
+            <div class="form-group">
+                <label for="patient_display">Patient ID:</label>
+                <input type="text" id="patient_display" value="{{ patient_id }}" readonly class="readonly-field">
+            </div>
+        {% else %}
+            <div class="form-group">
+                <label for="user_id">User ID / Patient ID:</label>
+                <input type="text" id="user_id" name="user_id" required placeholder="Enter your ID or scan QR above">
+            </div>
+        {% endif %}
+        
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required placeholder="Enter your password">
+            <div class="form-inline" style="margin-top:6px; display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="show_password" onclick="togglePasswordVisibility()">
+                <label for="show_password" style="margin:0;">Show password</label>
+            </div>
+        </div>
+        <br>
+        <button type="submit" class="btn btn-primary">Login</button>
+    </form>
+    
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let loginQrScanner = null;
+    let isLoginScanning = false;
+
+    window.addEventListener('load', function() {
+        document.getElementById('scan-qr-btn').addEventListener('click', function() {
+            if (!isLoginScanning) {
+                startLoginScanner();
+            }
+        });
+
+        document.getElementById('stop-scan-btn').addEventListener('click', function() {
+            if (isLoginScanning) {
+                stopLoginScanner();
+            }
+        });
+    });
+
+    function startLoginScanner() {
+        const readerDiv = document.getElementById('login-qr-reader');
+        const messageDiv = document.getElementById('scanner-message');
+        
+        readerDiv.style.display = 'block';
+        readerDiv.innerHTML = '';
+        messageDiv.innerHTML = '<p>Starting camera...</p>';
+        
+        document.getElementById('scan-qr-btn').style.display = 'none';
+        document.getElementById('stop-scan-btn').style.display = 'inline-block';
+        
+        if (typeof Html5QrcodeScanner === 'undefined') {
+            messageDiv.innerHTML = '<p class="error-message">QR Scanner library not loaded. Please refresh the page.</p>';
+            return;
+        }
+        
+        try {
+            loginQrScanner = new Html5QrcodeScanner("login-qr-reader", {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                rememberLastUsedCamera: true,
+                showTorchButtonIfSupported: true
+            });
+            
+            loginQrScanner.render(onLoginScanSuccess, onLoginScanFailure);
+            isLoginScanning = true;
+            messageDiv.innerHTML = '<p>Camera active! Point at QR code</p>';
+            
+        } catch (error) {
+            console.error("Scanner error:", error);
+            messageDiv.innerHTML = '<p class="error-message">Camera access failed. Please allow camera permissions and try again.</p>';
+            document.getElementById('scan-qr-btn').style.display = 'inline-block';
+            document.getElementById('stop-scan-btn').style.display = 'none';
+        }
+    }
+
+    function stopLoginScanner() {
+        if (loginQrScanner) {
+            loginQrScanner.clear().then(() => {
+                loginQrScanner = null;
+                document.getElementById('login-qr-reader').style.display = 'none';
+                document.getElementById('scan-qr-btn').style.display = 'inline-block';
+                document.getElementById('stop-scan-btn').style.display = 'none';
+                document.getElementById('scanner-message').innerHTML = '';
+                isLoginScanning = false;
+            }).catch(err => {
+                console.error("Error stopping scanner:", err);
+                loginQrScanner = null;
+                document.getElementById('login-qr-reader').style.display = 'none';
+                document.getElementById('scan-qr-btn').style.display = 'inline-block';
+                document.getElementById('stop-scan-btn').style.display = 'none';
+                document.getElementById('scanner-message').innerHTML = '';
+                isLoginScanning = false;
+            });
+        }
+    }
+
+    function onLoginScanSuccess(decodedText, decodedResult) {
+        document.getElementById('user_id').value = decodedText;
+        stopLoginScanner();
+        
+        document.getElementById('password').focus();
+        
+        const successDiv = document.createElement('div');
+        successDiv.className = 'success-message';
+        successDiv.innerHTML = 'Patient ID auto-filled! Please enter your password.';
+        document.querySelector('.qr-login-section').appendChild(successDiv);
+        
+        setTimeout(() => {
+            successDiv.remove();
+        }, 3000);
+    }
+
+    function onLoginScanFailure(error) {
+        // Handle scan failure silently
+    }
+
+    function togglePasswordVisibility() {
+        const pwd = document.getElementById('password');
+        const checkbox = document.getElementById('show_password');
+        if (!pwd) return;
+        pwd.type = checkbox.checked ? 'text' : 'password';
+    }
+</script>
+{% endblock %}

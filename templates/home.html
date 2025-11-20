@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Record System{% endblock %}
+
+{% block content %}
+{% if alerts %}
+<div class="alert-marquee">
+    <marquee behavior="scroll" direction="left" scrollamount="6" onmouseover="this.stop();" onmouseout="this.start();">
+        {% set ns = namespace(seen=[], shown=0) %}
+        {% for alert in alerts %}
+            {% if ns.shown < 10 %}
+                {% set key = (alert.disease|lower ~ '|' ~ alert.district|lower ~ '|' ~ alert.month) %}
+                {% if key not in ns.seen %}
+                    ALERT: {{ alert.disease }} outbreak in {{ alert.district }} - {{ alert.count }} cases in {{ alert.month }} •
+                    {% set ns.seen = ns.seen + [key] %}
+                    {% set ns.shown = ns.shown + 1 %}
+                {% endif %}
+            {% endif %}
+        {% endfor %}
+    </marquee>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+{% endblock %}
