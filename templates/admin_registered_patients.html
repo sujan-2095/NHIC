@@ -5,7 +5,7 @@
 {% block content %}
 <div class="card">
     <h1>Registered Patients</h1>
-    
+
     <div class="table-section">
         <table class="table">
             <thead>
@@ -27,16 +27,21 @@
                     <td>{{ patient.state }}</td>
                     <td>{{ patient.district }}</td>
                     <td>
-                        <a href="{{ url_for('past_visits', patient_id=patient.id) }}" class="btn btn-small">View History</a>
-                        <a href="{{ url_for('add_visit', patient_id=patient.id) }}" class="btn btn-small">Add Visit</a>
-                        <a href="{{ url_for('download_qr', patient_id=patient.id) }}" class="btn btn-small btn-print">Download QR</a>
+                        <div class="action-group">
+                            <a href="{{ url_for('past_visits', patient_id=patient.id) }}" class="action-pill view">View
+                                History</a>
+                            <a href="{{ url_for('add_visit', patient_id=patient.id) }}" class="action-pill add">Add
+                                Visit</a>
+                            <a href="{{ url_for('download_qr', patient_id=patient.id) }}"
+                                class="action-pill download">QR</a>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-    
+
     <div style="margin-top: 20px;">
         <a href="{{ url_for('download_patients_xlsx') }}" class="btn btn-success">Download Patients (XLSX)</a>
         <a href="{{ url_for('register') }}" class="btn btn-primary" style="margin-left: 10px;">Register New Patient</a>

@@ -65,14 +65,14 @@ def init_db():
         if 'user' not in cols:
             conn.execute("ALTER TABLE logs ADD COLUMN user TEXT")
 
-            # Helpful indexes for outbreak detection and lookups
-            try:
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_visits_disease_ts ON visits(disease, timestamp)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_patients_district ON patients(district)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_visits_patient ON visits(patient_id)")
-            except Exception as e:
-                # Index creation failures are non-fatal
-                logging.warning(f"Failed to create database indexes: {e}")
+        # Helpful indexes for outbreak detection and lookups
+        try:
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_visits_disease_ts ON visits(disease, timestamp)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_patients_district ON patients(district)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_visits_patient ON visits(patient_id)")
+        except Exception as e:
+            # Index creation failures are non-fatal
+            logging.warning(f"Failed to create database indexes: {e}")
     except sqlite3.Error as e:
         logging.error(f"Database initialization failed: {e}")
         raise

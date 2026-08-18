@@ -182,6 +182,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	// Populate state/district selects on register page
 	initializeStateDistrictSelects();
 
+    if (form) {
     form.addEventListener("submit", function (event) {
         // Prevent form submission if validation fails
         if (!validateForm()) {
@@ -190,6 +191,7 @@ document.addEventListener("DOMContentLoaded", function () {
             showSuccessMessage();
         }
     });
+    }
 });
 
 function validateForm() {

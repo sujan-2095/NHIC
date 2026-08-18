@@ -4,45 +4,52 @@
 
 {% block content %}
 <div class="card">
-    <h1>WELCOME - {{ patient.name }}</h1>
-    
+    <h2>Welcome — {{ patient.name }}</h2>
+
     <!-- Patient Information Section -->
-    <div class="patient-section">
-        <h2>Patient Information</h2>
-        <table class="table">
+    <div class="patient-section" style="margin-bottom:20px;">
+        <h3
+            style="margin:0 0 10px 0; font-size:1rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">
+            Patient Information</h3>
+        <table class="table" style="margin-bottom:10px;">
             <tbody>
                 <tr>
-                    <th>Patient ID</th>
-                    <td>{{ patient.id }}</td>
+                    <td data-label="Field"><strong>Patient ID</strong></td>
+                    <td data-label="Value">{{ patient.id }}</td>
                 </tr>
                 <tr>
-                    <th>Name</th>
-                    <td>{{ patient.name }}</td>
+                    <td data-label="Field"><strong>Name</strong></td>
+                    <td data-label="Value">{{ patient.name }}</td>
                 </tr>
                 <tr>
-                    <th>Age</th>
-                    <td>{{ patient.age }}</td>
+                    <td data-label="Field"><strong>Age</strong></td>
+                    <td data-label="Value">{{ patient.age }}</td>
                 </tr>
                 <tr>
-                    <th>State</th>
-                    <td>{{ patient.state }}</td>
+                    <td data-label="Field"><strong>State</strong></td>
+                    <td data-label="Value">{{ patient.state }}</td>
                 </tr>
                 <tr>
-                    <th>District</th>
-                    <td>{{ patient.district }}</td>
+                    <td data-label="Field"><strong>District</strong></td>
+                    <td data-label="Value">{{ patient.district }}</td>
                 </tr>
             </tbody>
         </table>
-        <div style="margin-top: 8px;">
-            {% if current_user.is_authenticated and current_user.role == 'patient' and current_user.id == patient.id %}
-            <a class="btn btn-secondary" href="{{ url_for('download_qr', patient_id=patient.id) }}">Download QR</a>
-            {% endif %}
-        </div>
+        {% if current_user.is_authenticated and current_user.role == 'patient' and current_user.id == patient.id %}
+        <a class="btn btn-secondary" href="{{ url_for('download_qr', patient_id=patient.id) }}">
+            <span class="material-symbols-outlined" style="font-size:18px">qr_code</span>
+            Download QR
+        </a>
+        {% endif %}
     </div>
-    
+
+    <!-- Medical History Section -->
     <div class="visits-section">
-        <h2>Medical History</h2>
+        <h3
+            style="margin:0 0 12px 0; font-size:1rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">
+            Medical History</h3>
         {% if visits %}
+        <div class="table-section">
             <table class="table">
                 <thead>
                     <tr>
@@ -57,55 +64,77 @@
                 <tbody>
                     {% for visit in visits %}
                     <tr>
-                        <td>{{ visit.timestamp if visit.timestamp else 'N/A' }}</td>
-                        <td>{{ visit.hospital }}</td>
-                        <td>{{ visit.doctor }}</td>
-                        <td>{{ visit.disease }}</td>
-                        <td>
-                            {% if visit.prescription %}
-                                <span class="doc-indicator">Prescription</span>
-                            {% endif %}
-                            {% if visit.scan_doc %}
-                                <span class="doc-indicator">Scan</span>
-                            {% endif %}
+                        <td data-label="Date">{{ visit.timestamp if visit.timestamp else 'N/A' }}</td>
+                        <td data-label="Hospital">{{ visit.hospital }}</td>
+                        <td data-label="Doctor">{{ visit.doctor }}</td>
+                        <td data-label="Disease">{{ visit.disease }}</td>
+                        <td data-label="Documents">
+                            <div class="doc-group">
+                                {% if visit.prescription %}<span class="doc-pill">Prescription</span>{% endif %}
+                                {% if visit.scan_doc %}<span class="doc-pill">Scan</span>{% endif %}
+                                {% if not visit.prescription and not visit.scan_doc %}<span
+                                    style="color:var(--muted);font-size:0.85rem;">None</span>{% endif %}
+                            </div>
                         </td>
-                        <td>
-                            {% if visit.prescription %}
-                                <button type="button" onclick="openDocument('{{ visit.visit_id }}', 'prescription')" class="btn btn-small btn-preview">View Prescription</button>
-                            {% endif %}
-                            {% if visit.scan_doc %}
-                                <button type="button" onclick="openDocument('{{ visit.visit_id }}', 'scan')" class="btn btn-small btn-preview">View Scan</button>
-                            {% endif %}
-                            {% if current_user.is_authenticated and (current_user.role == 'admin' or current_user.id == patient.id) %}
-                                <form method="POST" action="{{ url_for('delete_visit', visit_id=visit.visit_id) }}" style="display:inline" onsubmit="return confirm('Delete this visit permanently?');">
-                                    <button type="submit" class="btn btn-small btn-danger">Delete</button>
+                        <td data-label="Actions">
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                {% if visit.prescription %}
+                                <button type="button" onclick="openDocument('{{ visit.visit_id }}', 'prescription')"
+                                    class="btn btn-small btn-preview">
+                                    View Prescription
+                                </button>
+                                {% endif %}
+                                {% if visit.scan_doc %}
+                                <button type="button" onclick="openDocument('{{ visit.visit_id }}', 'scan')"
+                                    class="btn btn-small btn-preview">
+                                    View Scan
+                                </button>
+                                {% endif %}
+                                {% if current_user.is_authenticated and (current_user.role == 'admin' or current_user.id
+                                == patient.id) %}
+                                <form method="POST" action="{{ url_for('delete_visit', visit_id=visit.visit_id) }}"
+                                    style="display:inline" class="delete-visit-form">
+                                    <button type="submit" class="btn btn-small btn-danger"
+                                        data-no-loading="1">Delete</button>
                                 </form>
-                            {% endif %}
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
         {% else %}
-            <p class="no-data">No previous visits found.</p>
+        <div class="empty-state">
+            <span class="material-symbols-outlined">medical_information</span>
+            <p>No previous visits found. Add your first visit to get started.</p>
+        </div>
         {% endif %}
     </div>
-
 </div>
 
 <!-- Document Preview Modal -->
-<div id="documentModal" class="modal" style="display: none;">
+<div id="documentModal" class="modal" style="display:none;" role="dialog" aria-modal="true"
+    aria-labelledby="modalTitle">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 id="modalTitle">Document Preview</h3>
-            <div>
-                <a id="downloadLink" href="#" class="btn btn-small btn-secondary" style="margin-right:8px">Download</a>
-                <a id="openInNewTab" href="#" target="_blank" class="btn btn-small btn-ghost" style="margin-right:8px">Open in new tab</a>
-                <span class="close" onclick="closeModal()">&times;</span>
+            <h3 id="modalTitle" style="margin:0; font-size:1rem;">Document Preview</h3>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <a id="downloadLink" href="#" class="btn btn-small btn-secondary">
+                    <span class="material-symbols-outlined" style="font-size:16px">download</span>Download
+                </a>
+                <a id="openInNewTab" href="#" target="_blank" class="btn btn-small btn-ghost">
+                    <span class="material-symbols-outlined" style="font-size:16px">open_in_new</span>New Tab
+                </a>
+                <button class="modal-close-btn" onclick="closeModal()" aria-label="Close document preview">
+                    <span class="material-symbols-outlined" style="font-size:20px">close</span>
+                </button>
             </div>
         </div>
         <div class="modal-body">
-            <iframe id="documentFrame" src="" style="width: 100%; height: 500px; border: none;"></iframe>
+            <iframe id="documentFrame" src="" style="width:100%; height:500px; border:none;"
+                title="Document Preview"></iframe>
         </div>
     </div>
 </div>
@@ -113,55 +142,73 @@
 
 {% block scripts %}
 <script>
-function openDocument(visitId, docType) {
-    const modal = document.getElementById('documentModal');
-    const frame = document.getElementById('documentFrame');
-    const title = document.getElementById('modalTitle');
-    const openLink = document.getElementById('openInNewTab');
-    const downloadLink = document.getElementById('downloadLink');
-    
-    const url = `/view_document/${visitId}/${docType}`;
-    const downloadUrl = `/download_document/${visitId}/${docType}`;
-    
-    title.textContent = docType === 'prescription' ? 'Prescription Document' : 'Scan Document';
-    openLink.href = url;
-    downloadLink.href = downloadUrl;
-    
-    // Show loading message and set src directly (simpler and more reliable)
-    frame.removeAttribute('src');
-    frame.srcdoc = '<div style="padding: 20px; text-align: center;"><h3>Loading document...</h3></div>';
-    
-    // Attach handlers
-    frame.onload = () => {
-        try { frame.removeAttribute('srcdoc'); } catch (_) {}
-    };
-    frame.onerror = () => {
-        frame.srcdoc = '<div style="padding: 20px; text-align: center;"><h3>Unable to preview</h3><p>If the preview is blocked by the browser, use the "Open in new tab" or "Download" buttons above.</p></div>';
-    };
-    
-    frame.src = url;
-    
-    modal.style.display = 'flex';
-}
+    // Inline delete confirmation (no native confirm() dialog)
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.delete-visit-form').forEach(function (form) {
+            const btn = form.querySelector('button[type="submit"]');
+            if (!btn) return;
+            btn.addEventListener('click', function (e) {
+                if (btn.dataset.confirming) return; // second click — submit
+                e.preventDefault();
+                btn.dataset.confirming = '1';
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = 'Confirm Delete';
+                btn.style.background = 'var(--danger-600)';
+                const cancelBtn = document.createElement('button');
+                cancelBtn.type = 'button';
+                cancelBtn.className = 'btn btn-small btn-ghost';
+                cancelBtn.textContent = 'Cancel';
+                cancelBtn.style.marginLeft = '4px';
+                cancelBtn.addEventListener('click', function () {
+                    btn.innerHTML = originalHtml;
+                    btn.style.background = '';
+                    delete btn.dataset.confirming;
+                    cancelBtn.remove();
+                });
+                btn.insertAdjacentElement('afterend', cancelBtn);
+            });
+        });
+    });
 
-function closeModal() {
-    const modal = document.getElementById('documentModal');
-    const frame = document.getElementById('documentFrame');
-    
-    modal.style.display = 'none';
-    frame.src = '';
-    try { frame.removeAttribute('srcdoc'); } catch (_) {}
-}
+    function openDocument(visitId, docType) {
+        const modal = document.getElementById('documentModal');
+        const frame = document.getElementById('documentFrame');
+        const title = document.getElementById('modalTitle');
+        const openLink = document.getElementById('openInNewTab');
+        const downloadLink = document.getElementById('downloadLink');
 
-// Close modal when clicking outside
-window.onclick = function(event) {
-    const modal = document.getElementById('documentModal');
-    if (event.target === modal) {
-        closeModal();
+        const url = `/view_document/${visitId}/${docType}`;
+        const downloadUrl = `/download_document/${visitId}/${docType}`;
+
+        title.textContent = docType === 'prescription' ? 'Prescription Document' : 'Scan Document';
+        openLink.href = url;
+        downloadLink.href = downloadUrl;
+
+        frame.removeAttribute('src');
+        frame.srcdoc = '<div style="padding:20px;text-align:center;"><h3>Loading document…</h3></div>';
+        frame.onload = () => { try { frame.removeAttribute('srcdoc'); } catch (_) { } };
+        frame.onerror = () => {
+            frame.srcdoc = '<div style="padding:20px;text-align:center;"><h3>Unable to preview</h3><p>Use the "New Tab" or "Download" buttons above.</p></div>';
+        };
+        frame.src = url;
+        modal.style.display = 'flex';
     }
-}
+
+    function closeModal() {
+        const modal = document.getElementById('documentModal');
+        const frame = document.getElementById('documentFrame');
+        if (modal) modal.style.display = 'none';
+        if (frame) { frame.src = ''; try { frame.removeAttribute('srcdoc'); } catch (_) { } }
+    }
+
+    window.addEventListener('click', function (event) {
+        const modal = document.getElementById('documentModal');
+        if (modal && event.target === modal) closeModal();
+    });
+
+    // Escape key closes modal
+    window.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeModal();
+    });
 </script>
 {% endblock %}
-
-
-

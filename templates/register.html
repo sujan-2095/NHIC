@@ -8,62 +8,87 @@
 
 {% block content %}
 <div class="card">
-    <h1>Register New Patient</h1>
-    
+    <h2>Register New Patient</h2>
+
+    {% if error %}
+    <div class="error-message">{{ error }}</div>
+    {% endif %}
+
     <form method="POST" id="patientForm">
         <div class="form-group">
-            <label for="name">Full Name:</label>
-            <input type="text" id="name" name="name" required placeholder="Enter patient's full name">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" name="name" required placeholder="Enter patient's full name"
+                autocomplete="name">
         </div>
-        
+
         <div class="form-group">
-            <label for="age">Age:</label>
-            <input type="number" id="age" name="age" required placeholder="Enter age">
+            <label for="age">Age</label>
+            <input type="number" id="age" name="age" required placeholder="Enter age" min="0" max="150">
         </div>
-        
+
         <div class="form-group">
-            <label for="stateSelect">State:</label>
+            <label for="stateSelect">State</label>
             <select id="stateSelect" name="state" required>
                 <option value="">Select state</option>
             </select>
         </div>
-        
+
         <div class="form-group">
-            <label for="districtSelect">District:</label>
+            <label for="districtSelect">District</label>
             <select id="districtSelect" name="district" required disabled>
                 <option value="">Select district</option>
             </select>
         </div>
-        
+
         <div class="form-group">
-            <label for="user-input">Last 6 digits (for Patient ID):</label>
-            <input type="text" id="user-input" name="user-input" required placeholder="Enter 6 digits" 
-                   maxlength="6" oninput="generatePatientID()">
+            <label for="user-input">Last 6 digits (for Patient ID)</label>
+            <input type="text" id="user-input" name="user-input" required placeholder="Enter 6 digits" maxlength="6"
+                oninput="generatePatientID()">
         </div>
-        
+
         <div class="form-group">
-            <label>Generated Patient ID:</label>
+            <label>Generated Patient ID</label>
             <p id="patientIdDisplay" class="readonly-field">Will be auto-generated</p>
             <input type="hidden" id="patientId" name="patientId" required>
         </div>
-        
+
         <div class="form-group">
-            <p>Consider Using Your Phone Number as Password</p>
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required placeholder="Create a password">
+            <label for="password">Password</label>
+            <div class="input-with-icon">
+                <input type="password" id="password" name="password" required placeholder="Create a password"
+                    autocomplete="new-password">
+                <button type="button" class="toggle-pw" onclick="toggleRegPw()" aria-label="Toggle password visibility">
+                    <span class="material-symbols-outlined" id="reg-pw-icon">visibility</span>
+                </button>
+            </div>
+            <small class="form-help">Choose a strong, memorable password. Min 6 characters recommended.</small>
         </div>
-        
-        <button type="submit" class="btn btn-primary">Register Patient</button>
+
+        <button type="submit" class="btn btn-primary">
+            <span class="material-symbols-outlined" style="font-size:18px">person_add</span>
+            Register Patient
+        </button>
     </form>
-    
-    {% if error %}
-    <div class="error-message">
-        {{ error }}
-    </div>
-    {% endif %}
-    
-    <div id="successMessage" class="success-message hidden">
+
+    <div id="successMessage" class="success-message hidden" style="margin-top:12px;">
         Patient registered successfully!
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleRegPw() {
+        const pwd = document.getElementById('password');
+        const icon = document.getElementById('reg-pw-icon');
+        if (!pwd) return;
+        if (pwd.type === 'password') {
+            pwd.type = 'text';
+            if (icon) icon.textContent = 'visibility_off';
+        } else {
+            pwd.type = 'password';
+            if (icon) icon.textContent = 'visibility';
+        }
+    }
+</script>
 {% endblock %}

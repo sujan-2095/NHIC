@@ -4,81 +4,172 @@
 
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- removed chartjs-plugin-datalabels -->
 {% endblock %}
 
 {% block content %}
 <div class="card">
-    <h1>Admin Analytics</h1>
+  <h2 style="margin:0 0 20px 0;">Admin Analytics</h2>
 
-    <div class="charts-grid" style="display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
-        <div class="chart-card" style="background:transparent; border:1px solid var(--border); border-radius:12px; padding:12px;">
-            <h3>Visits by Disease</h3>
-            <canvas id="chartVisitsByDisease" height="160"></canvas>
-        </div>
-        <div class="chart-card" style="background:transparent; border:1px solid var(--border); border-radius:12px; padding:12px;">
-            <h3>Visits Over Time</h3>
-            <canvas id="chartVisitsOverTime" height="160"></canvas>
-        </div>
-        <div class="chart-card" style="background:transparent; border:1px solid var(--border); border-radius:12px; padding:12px;">
-            <h3>Alerts by Disease</h3>
-            <canvas id="chartAlertsByDisease" height="160"></canvas>
-        </div>
-        <div class="chart-card" style="background:transparent; border:1px solid var(--border); border-radius:12px; padding:12px;">
-            <h3>Top Districts by Alerts</h3>
-            <canvas id="chartAlertsByDistrict" height="160"></canvas>
-        </div>
-        <div class="chart-card" style="background:transparent; border:1px solid var(--border); border-radius:12px; padding:12px;">
-            <h3>Alerts by Month</h3>
-            <canvas id="chartAlertsByMonth" height="160"></canvas>
-        </div>
+  <!-- KPI Summary Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <span class="material-symbols-outlined kpi-icon">groups</span>
+      <div class="kpi-label">Total Visits Tracked</div>
+      <div class="kpi-value">{{ visits_by_disease.data | sum if visits_by_disease.data else 0 }}</div>
+    </div>
+    <div class="kpi-card">
+      <span class="material-symbols-outlined kpi-icon" style="color:var(--success)">coronavirus</span>
+      <div class="kpi-label">Disease Categories</div>
+      <div class="kpi-value">{{ visits_by_disease.labels | length if visits_by_disease.labels else 0 }}</div>
+    </div>
+    <div class="kpi-card">
+      <span class="material-symbols-outlined kpi-icon" style="color:var(--danger)">notification_important</span>
+      <div class="kpi-label">Total Alerts</div>
+      <div class="kpi-value">{{ alerts_by_disease.data | sum if alerts_by_disease.data else 0 }}</div>
+    </div>
+    <div class="kpi-card">
+      <span class="material-symbols-outlined kpi-icon" style="color:var(--warning)">location_on</span>
+      <div class="kpi-label">Districts Affected</div>
+      <div class="kpi-value">{{ alerts_by_district.labels | length if alerts_by_district.labels else 0 }}</div>
+    </div>
+  </div>
+
+  <!-- Charts Grid -->
+  <div class="charts-grid" style="display:grid; gap:16px; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));">
+
+    <div class="chart-card" style="border:1px solid var(--border); border-radius:12px; padding:16px;">
+      <div class="chart-header">
+        <span class="material-symbols-outlined">pie_chart</span>
+        <h3>Visits by Disease</h3>
+      </div>
+      <canvas id="chartVisitsByDisease" height="160"></canvas>
     </div>
 
-    <!-- Embedded datasets as JSON to avoid inline templating in JS -->
-    <script id="data-visits-by-disease" type="application/json">{{ visits_by_disease|tojson }}</script>
-    <script id="data-visits-over-time" type="application/json">{{ visits_over_time|tojson }}</script>
-    <script id="data-alerts-by-disease" type="application/json">{{ alerts_by_disease|tojson }}</script>
-    <script id="data-alerts-by-district" type="application/json">{{ alerts_by_district|tojson }}</script>
-    <script id="data-alerts-by-month" type="application/json">{{ alerts_by_month|tojson }}</script>
+    <div class="chart-card" style="border:1px solid var(--border); border-radius:12px; padding:16px;">
+      <div class="chart-header">
+        <span class="material-symbols-outlined">show_chart</span>
+        <h3>Visits Over Time</h3>
+      </div>
+      <canvas id="chartVisitsOverTime" height="160"></canvas>
+    </div>
+
+    <div class="chart-card" style="border:1px solid var(--border); border-radius:12px; padding:16px;">
+      <div class="chart-header">
+        <span class="material-symbols-outlined" style="color:var(--danger)">bar_chart</span>
+        <h3>Alerts by Disease</h3>
+      </div>
+      <canvas id="chartAlertsByDisease" height="160"></canvas>
+    </div>
+
+    <div class="chart-card" style="border:1px solid var(--border); border-radius:12px; padding:16px;">
+      <div class="chart-header">
+        <span class="material-symbols-outlined" style="color:var(--warning)">location_on</span>
+        <h3>Top Districts by Alerts</h3>
+      </div>
+      <canvas id="chartAlertsByDistrict" height="160"></canvas>
+    </div>
+
+    <div class="chart-card" style="border:1px solid var(--border); border-radius:12px; padding:16px;">
+      <div class="chart-header">
+        <span class="material-symbols-outlined" style="color:var(--success)">calendar_month</span>
+        <h3>Alerts by Month</h3>
+      </div>
+      <canvas id="chartAlertsByMonth" height="160"></canvas>
+    </div>
+
+  </div>
+
+  <!-- Embedded datasets -->
+  <script id="data-visits-by-disease" type="application/json">{{ visits_by_disease|tojson }}</script>
+  <script id="data-visits-over-time" type="application/json">{{ visits_over_time|tojson }}</script>
+  <script id="data-alerts-by-disease" type="application/json">{{ alerts_by_disease|tojson }}</script>
+  <script id="data-alerts-by-district" type="application/json">{{ alerts_by_district|tojson }}</script>
+  <script id="data-alerts-by-month" type="application/json">{{ alerts_by_month|tojson }}</script>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Palette with improved contrast
-const palette = [
-  '#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16','#f43f5e','#14b8a6','#a855f7'
-];
+  const LABEL_COLOR = '#e2e8f0'; // light — readable on dark glass cards
+  const TICK_COLOR = '#94a3b8';
 
-// simplified defaults removed and plugins unregistered
+  const palette = [
+    '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+    '#06b6d4', '#84cc16', '#f43f5e', '#14b8a6', '#a855f7'
+  ];
 
-const visitsByDisease = JSON.parse(document.getElementById('data-visits-by-disease').textContent);
-const visitsOverTime = JSON.parse(document.getElementById('data-visits-over-time').textContent);
-const alertsByDisease = JSON.parse(document.getElementById('data-alerts-by-disease').textContent);
-const alertsByDistrict = JSON.parse(document.getElementById('data-alerts-by-district').textContent);
-const alertsByMonth = JSON.parse(document.getElementById('data-alerts-by-month').textContent);
+  const visitsByDisease = JSON.parse(document.getElementById('data-visits-by-disease').textContent);
+  const visitsOverTime = JSON.parse(document.getElementById('data-visits-over-time').textContent);
+  const alertsByDisease = JSON.parse(document.getElementById('data-alerts-by-disease').textContent);
+  const alertsByDistrict = JSON.parse(document.getElementById('data-alerts-by-district').textContent);
+  const alertsByMonth = JSON.parse(document.getElementById('data-alerts-by-month').textContent);
 
-function doughnutChart(ctx, labels, data){
-  return new Chart(ctx, { type:'doughnut', data:{ labels, datasets:[{ data, backgroundColor: labels.map((_,i)=>palette[i%palette.length]) }] }, options:{ plugins:{ legend:{ position:'bottom', labels:{ color:'#cbd5e1' } }, tooltip:{ callbacks:{ label:(context)=>{ const value=context.parsed; const intVal=Math.round(value||0); return `${context.label}: ${intVal}`; } } } } } });
-}
-function lineChart(ctx, labels, data){
-  return new Chart(ctx, { type:'line', data:{ labels, datasets:[{ label:'Visits', data, borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,.2)', fill:true, tension:.25 }] }, options:{ scales:{ x:{ ticks:{ color:'#94a3b8' }}, y:{ ticks:{ color:'#94a3b8', stepSize:1, precision:0, callback:(v)=>Number.isInteger(v)?v:'' }, beginAtZero:true }}, plugins:{ tooltip:{ callbacks:{ label:(context)=>{ const value=context.parsed.y; return `${context.dataset.label || ''}: ${Math.round(value||0)}`.trim(); } } } } } });
-}
-function barChart(ctx, labels, data, horizontal=false, label='Count'){
-  const numericAxis = horizontal ? 'x' : 'y';
-  const catAxis = horizontal ? 'y' : 'x';
-  const scales = {};
-  scales[catAxis] = { ticks: { color: '#94a3b8' } };
-  scales[numericAxis] = { beginAtZero: true, ticks: { color: '#94a3b8', stepSize: 1, precision: 0, callback: (value) => Number.isInteger(value) ? value : '' } };
-  return new Chart(ctx, { type:'bar', data:{ labels, datasets:[{ label, data, backgroundColor: labels.map((_,i)=>palette[i%palette.length]) }] }, options:{ indexAxis: horizontal?'y':'x', scales, plugins:{ tooltip:{ callbacks:{ label:(context)=>{ const value = horizontal ? context.parsed.x : context.parsed.y; return `${context.dataset.label || ''}: ${Math.round(value || 0)}`.trim(); } } } } } });
-}
+  function doughnutChart(ctx, labels, data) {
+    return new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data, backgroundColor: labels.map((_, i) => palette[i % palette.length]) }] },
+      options: {
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: LABEL_COLOR, padding: 12, font: { size: 12 } }
+          },
+          tooltip: { callbacks: { label: ctx => `${ctx.label}: ${Math.round(ctx.parsed || 0)}` } }
+        }
+      }
+    });
+  }
 
-document.addEventListener('DOMContentLoaded', () => {
-  doughnutChart(document.getElementById('chartVisitsByDisease'), visitsByDisease.labels, visitsByDisease.data);
-  lineChart(document.getElementById('chartVisitsOverTime'), visitsOverTime.labels, visitsOverTime.data);
-  barChart(document.getElementById('chartAlertsByDisease'), alertsByDisease.labels, alertsByDisease.data, false, 'Alerts');
-  barChart(document.getElementById('chartAlertsByDistrict'), alertsByDistrict.labels, alertsByDistrict.data, true, 'Alerts');
-  barChart(document.getElementById('chartAlertsByMonth'), alertsByMonth.labels, alertsByMonth.data, false, 'Alerts');
-});
+  function lineChart(ctx, labels, data) {
+    return new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Visits', data,
+          borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.12)',
+          fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#3b82f6'
+        }]
+      },
+      options: {
+        scales: {
+          x: { ticks: { color: TICK_COLOR } },
+          y: { beginAtZero: true, ticks: { color: TICK_COLOR, stepSize: 1, precision: 0, callback: v => Number.isInteger(v) ? v : '' } }
+        },
+        plugins: {
+          legend: { labels: { color: LABEL_COLOR } },
+          tooltip: { callbacks: { label: ctx => `Visits: ${Math.round(ctx.parsed.y || 0)}` } }
+        }
+      }
+    });
+  }
+
+  function barChart(ctx, labels, data, horizontal = false, label = 'Count') {
+    const numAxis = horizontal ? 'x' : 'y';
+    const catAxis = horizontal ? 'y' : 'x';
+    const scales = {};
+    scales[catAxis] = { ticks: { color: TICK_COLOR } };
+    scales[numAxis] = { beginAtZero: true, ticks: { color: TICK_COLOR, stepSize: 1, precision: 0, callback: v => Number.isInteger(v) ? v : '' } };
+    return new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label, data, backgroundColor: labels.map((_, i) => palette[i % palette.length]) }] },
+      options: {
+        indexAxis: horizontal ? 'y' : 'x',
+        scales,
+        plugins: {
+          legend: { labels: { color: LABEL_COLOR } },
+          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${Math.round(horizontal ? ctx.parsed.x : ctx.parsed.y || 0)}` } }
+        }
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    doughnutChart(document.getElementById('chartVisitsByDisease'), visitsByDisease.labels, visitsByDisease.data);
+    lineChart(document.getElementById('chartVisitsOverTime'), visitsOverTime.labels, visitsOverTime.data);
+    barChart(document.getElementById('chartAlertsByDisease'), alertsByDisease.labels, alertsByDisease.data, false, 'Alerts');
+    barChart(document.getElementById('chartAlertsByDistrict'), alertsByDistrict.labels, alertsByDistrict.data, true, 'Alerts');
+    barChart(document.getElementById('chartAlertsByMonth'), alertsByMonth.labels, alertsByMonth.data, false, 'Alerts');
+  });
 </script>
 {% endblock %}

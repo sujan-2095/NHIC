@@ -24,32 +24,36 @@
             </thead>
             <tbody>
                 {% if visits %}
-                    {% for v in visits %}
-                    <tr>
-                        <td>{{ v.timestamp }}</td>
-                        <td>{{ v.patient_id }}</td>
-                        <td>{{ v.patient_name }}</td>
-                        <td>{{ v.hospital }}</td>
-                        <td>{{ v.doctor }}</td>
-                        <td>{{ v.disease }}</td>
-                        <td>
-                            {% if v.has_prescription %}Prescription{% endif %}
-                            {% if v.has_scan %}{% if v.has_prescription %} | {% endif %}Scan{% endif %}
-                        </td>
-                        <td>
-                            {% if v.has_prescription %}
-                                <button type="button" onclick="openDocument('{{ v.visit_id }}', 'prescription')" class="btn btn-small btn-preview">View Prescription</button>
-                            {% endif %}
-                            {% if v.has_scan %}
-                                <button type="button" onclick="openDocument('{{ v.visit_id }}', 'scan')" class="btn btn-small btn-preview">View Scan</button>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
+                {% for v in visits %}
+                <tr>
+                    <td>{{ v.timestamp }}</td>
+                    <td>{{ v.patient_id }}</td>
+                    <td>{{ v.patient_name }}</td>
+                    <td>{{ v.hospital }}</td>
+                    <td>{{ v.doctor }}</td>
+                    <td>{{ v.disease }}</td>
+                    <td>
+                        <div class="doc-group">
+                            {% if v.has_prescription %}<span class="doc-pill">Prescription</span>{% endif %}
+                            {% if v.has_scan %}<span class="doc-pill">Scan</span>{% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if v.has_prescription %}
+                        <button type="button" onclick="openDocument('{{ v.visit_id }}', 'prescription')"
+                            class="btn btn-small btn-preview">View Prescription</button>
+                        {% endif %}
+                        {% if v.has_scan %}
+                        <button type="button" onclick="openDocument('{{ v.visit_id }}', 'scan')"
+                            class="btn btn-small btn-preview">View Scan</button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
                 {% else %}
-                    <tr>
-                        <td colspan="8" class="text-center">No visits recorded.</td>
-                    </tr>
+                <tr>
+                    <td colspan="8" class="text-center">No visits recorded.</td>
+                </tr>
                 {% endif %}
             </tbody>
         </table>
@@ -63,7 +67,8 @@
             <h3 id="modalTitle">Document Preview</h3>
             <div>
                 <a id="downloadLink" href="#" class="btn btn-small btn-secondary" style="margin-right:8px">Download</a>
-                <a id="openInNewTab" href="#" target="_blank" class="btn btn-small btn-ghost" style="margin-right:8px">Open in new tab</a>
+                <a id="openInNewTab" href="#" target="_blank" class="btn btn-small btn-ghost"
+                    style="margin-right:8px">Open in new tab</a>
                 <span class="close" onclick="closeModal()">&times;</span>
             </div>
         </div>
@@ -76,52 +81,50 @@
 
 {% block scripts %}
 <script>
-function openDocument(visitId, docType) {
-    const modal = document.getElementById('documentModal');
-    const frame = document.getElementById('documentFrame');
-    const title = document.getElementById('modalTitle');
-    const openLink = document.getElementById('openInNewTab');
-    const downloadLink = document.getElementById('downloadLink');
+    function openDocument(visitId, docType) {
+        const modal = document.getElementById('documentModal');
+        const frame = document.getElementById('documentFrame');
+        const title = document.getElementById('modalTitle');
+        const openLink = document.getElementById('openInNewTab');
+        const downloadLink = document.getElementById('downloadLink');
 
-    const url = `/view_document/${visitId}/${docType}`;
-    const downloadUrl = `/download_document/${visitId}/${docType}`;
+        const url = `/view_document/${visitId}/${docType}`;
+        const downloadUrl = `/download_document/${visitId}/${docType}`;
 
-    title.textContent = docType === 'prescription' ? 'Prescription Document' : 'Scan Document';
-    openLink.href = url;
-    downloadLink.href = downloadUrl;
+        title.textContent = docType === 'prescription' ? 'Prescription Document' : 'Scan Document';
+        openLink.href = url;
+        downloadLink.href = downloadUrl;
 
-    // Prepare iframe
-    frame.removeAttribute('src');
-    frame.srcdoc = '<div style="padding: 20px; text-align: center;"><h3>Loading document...</h3></div>';
+        // Prepare iframe
+        frame.removeAttribute('src');
+        frame.srcdoc = '<div style="padding: 20px; text-align: center;"><h3>Loading document...</h3></div>';
 
-    frame.onload = () => {
-        try { frame.removeAttribute('srcdoc'); } catch (_) {}
-    };
-    frame.onerror = () => {
-        frame.srcdoc = '<div style=\"padding: 20px; text-align: center;\"><h3>Unable to preview</h3><p>If the preview is blocked by the browser, use the \"Open in new tab\" or \"Download\" buttons above.</p></div>';
-    };
+        frame.onload = () => {
+            try { frame.removeAttribute('srcdoc'); } catch (_) { }
+        };
+        frame.onerror = () => {
+            frame.srcdoc = '<div style=\"padding: 20px; text-align: center;\"><h3>Unable to preview</h3><p>If the preview is blocked by the browser, use the \"Open in new tab\" or \"Download\" buttons above.</p></div>';
+        };
 
-    // Load
-    frame.src = url;
+        // Load
+        frame.src = url;
 
-    modal.style.display = 'flex';
-}
-
-function closeModal() {
-    const modal = document.getElementById('documentModal');
-    const frame = document.getElementById('documentFrame');
-
-    modal.style.display = 'none';
-    frame.src = '';
-    try { frame.removeAttribute('srcdoc'); } catch (_) {}
-}
-
-// Close modal when clicking outside
-window.onclick = function(event) {
-    const modal = document.getElementById('documentModal');
-    if (event.target === modal) {
-        closeModal();
+        modal.style.display = 'flex';
     }
-}
+
+    function closeModal() {
+        const modal = document.getElementById('documentModal');
+        const frame = document.getElementById('documentFrame');
+        if (modal) modal.style.display = 'none';
+        if (frame) { frame.src = ''; try { frame.removeAttribute('srcdoc'); } catch (_) { } }
+    }
+
+    // Close modal when clicking outside
+    window.addEventListener('click', function (event) {
+        const modal = document.getElementById('documentModal');
+        if (modal && event.target === modal) {
+            closeModal();
+        }
+    });
 </script>
 {% endblock %}

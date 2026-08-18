@@ -4,9 +4,10 @@
 
 {% block content %}
 <div class="card">
-    <h1>Outbreak Alerts</h1>
-    <p class="muted" style="margin-top:4px;margin-bottom:12px;font-size:0.95rem;">
-        Counts represent <strong>unique patients</strong> detected in the <strong>last {{ window_days }} days</strong> for a Disease + District.
+    <h2 style="margin:0 0 6px 0;">Outbreak Alerts</h2>
+    <p style="margin:0 0 16px 0; color:var(--muted); font-size:0.9rem;">
+        Counts represent <strong>unique patients</strong> detected in the
+        <strong>last {{ window_days }} days</strong> for a Disease + District combination.
     </p>
 
     <div class="table-section">
@@ -18,30 +19,39 @@
                     <th>District</th>
                     <th>Month</th>
                     <th>Unique Patients</th>
-                    <th>Window</th>
                 </tr>
             </thead>
             <tbody>
                 {% if alerts %}
-                    {% for alert in alerts %}
-                    <tr>
-                        <td>{{ alert.created_at }}</td>
-                        <td>{{ alert.disease }}</td>
-                        <td>{{ alert.district }}</td>
-                        <td>{{ alert.month }}</td>
-                        <td>{{ alert.count }}</td>
-                        <td>Last {{ window_days }} days</td>
-                    </tr>
-                    {% endfor %}
+                {% for alert in alerts %}
+                <tr>
+                    <td data-label="Date">{{ alert.created_at }}</td>
+                    <td data-label="Disease">{{ alert.disease }}</td>
+                    <td data-label="District">{{ alert.district }}</td>
+                    <td data-label="Month">{{ alert.month }}</td>
+                    <td data-label="Unique Patients">
+                        {% if alert.count >= 20 %}
+                        <span class="badge badge-danger">{{ alert.count }} — Critical</span>
+                        {% elif alert.count >= 10 %}
+                        <span class="badge badge-warning">{{ alert.count }} — High</span>
+                        {% else %}
+                        <span class="badge badge-success">{{ alert.count }} — Low</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
                 {% else %}
-                    <tr>
-                        <td colspan="6" class="text-center">No outbreak alerts recorded.</td>
-                    </tr>
+                <tr>
+                    <td colspan="5">
+                        <div class="empty-state">
+                            <span class="material-symbols-outlined" style="color:var(--accent)">verified</span>
+                            <p>No outbreak alerts recorded. All clear!</p>
+                        </div>
+                    </td>
+                </tr>
                 {% endif %}
             </tbody>
         </table>
     </div>
-    
 </div>
 {% endblock %}
-

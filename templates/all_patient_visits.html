@@ -28,12 +28,10 @@
                         <td>{{ visit.doctor }}</td>
                         <td>{{ visit.disease }}</td>
                         <td>
-                            {% if visit.prescription %}
-                                <span class="doc-indicator">Prescription</span>
-                            {% endif %}
-                            {% if visit.scan_doc %}
-                                <span class="doc-indicator">Scan</span>
-                            {% endif %}
+                            <div class="doc-group">
+                                {% if visit.prescription %}<span class="doc-pill">Prescription</span>{% endif %}
+                                {% if visit.scan_doc %}<span class="doc-pill">Scan</span>{% endif %}
+                            </div>
                         </td>
                         <td>
                             {% if visit.prescription %}
@@ -113,18 +111,16 @@ function openDocument(visitId, docType) {
 function closeModal() {
     const modal = document.getElementById('documentModal');
     const frame = document.getElementById('documentFrame');
-    
-    modal.style.display = 'none';
-    frame.src = '';
-    try { frame.removeAttribute('srcdoc'); } catch (_) {}
+    if (modal) modal.style.display = 'none';
+    if (frame) { frame.src = ''; try { frame.removeAttribute('srcdoc'); } catch (_) {} }
 }
 
 // Close modal when clicking outside
-window.onclick = function(event) {
+window.addEventListener('click', function(event) {
     const modal = document.getElementById('documentModal');
-    if (event.target === modal) {
+    if (modal && event.target === modal) {
         closeModal();
     }
-}
+});
 </script>
 {% endblock %}
